@@ -90,13 +90,6 @@ void ReportWidget::OnFileSave()
 	addFormatAndShow();
 }
 
-void ReportWidget::OnFileSaveAs()
-{
-	bool success = m_textEdit->fileSaveAs();
-	if (false == success) return;
-	addFormatAndShow();
-}
-
 void ReportWidget::OnDeleteFile()
 {
 	bool success = m_textEdit->deleteFormat();
@@ -187,6 +180,11 @@ void ReportWidget::OnSplitCell()
 	m_textEdit->splitCell();
 }
 
+void ReportWidget::OnOpenCellProperty()
+{
+	m_textEdit->openCellProperty();
+}
+
 void ReportWidget::OnReportFormatChange(const QString& dirName)
 {
 	bool result = m_textEdit->loadFromDirName(dirName);
@@ -213,7 +211,7 @@ QToolBar* ReportWidget::createToolbar()
 
 	toolBar->addSeparator();
 
-	QPushButton* newFormat = new QPushButton("New Format", toolBar);
+	QPushButton* newFormat = new QPushButton("New", toolBar);
 	toolBar->addWidget(newFormat);
 	connect(newFormat, &QPushButton::clicked, this, &ReportWidget::OnNewFile);
 
@@ -221,29 +219,20 @@ QToolBar* ReportWidget::createToolbar()
 	toolBar->addWidget(save);
 	connect(save, &QPushButton::clicked, this, &ReportWidget::OnFileSave);
 
-	QPushButton* saveAs = new QPushButton("Save As", toolBar);
-	toolBar->addWidget(saveAs);
-	connect(saveAs, &QPushButton::clicked, this, &ReportWidget::OnFileSaveAs);
-
 	QPushButton* del = new QPushButton("Delete", toolBar);
 	toolBar->addWidget(del);
 	connect(del, &QPushButton::clicked, this, &ReportWidget::OnDeleteFile);
 
 	toolBar->addSeparator();
 
-	QPushButton* fileImport = new QPushButton("Import", toolBar);
-	toolBar->addWidget(fileImport);
-	connect(fileImport, &QPushButton::clicked, this, &ReportWidget::OnFileImport);
-
-	QPushButton* fileExport = new QPushButton("Export", toolBar);
-	toolBar->addWidget(fileExport);
-	connect(fileExport, &QPushButton::clicked, this, &ReportWidget::OnFileExport);
-
-	QPushButton* printPreview = new QPushButton("Preview", toolBar);
-	toolBar->addWidget(printPreview);
-	connect(printPreview, &QPushButton::clicked, this, &ReportWidget::OnPrintPreview);
-
-	toolBar->addSeparator();
+	QPixmap pix(16, 16);
+	pix.fill(Qt::black);
+	QPushButton* textColor = new QPushButton(toolBar);
+	toolBar_list.push_back(textColor);
+	textColor->setIcon(QIcon(pix));
+	//textColor->setFixedSize(24, 24);
+	toolBar->addWidget(textColor);
+	connect(textColor, &QPushButton::clicked, this, &ReportWidget::OnTextColor);
 
 	QFontDatabase base;
 	QStringList list = base.families();
@@ -264,17 +253,6 @@ QToolBar* ReportWidget::createToolbar()
 		comboSize->addItem(QString::number(size));
 	comboSize->setCurrentIndex(standardSizes.indexOf(QApplication::font().pointSize()));
 	connect(comboSize, QOverload<const QString &>::of(&QComboBox::activated), this, &ReportWidget::OnTextSize);
-
-	QPixmap pix(16, 16);
-	pix.fill(Qt::black);
-	QPushButton* textColor = new QPushButton(toolBar);
-	toolBar_list.push_back(textColor);
-	textColor->setIcon(QIcon(pix));
-	//textColor->setFixedSize(24, 24);
-	toolBar->addWidget(textColor);
-	connect(textColor, &QPushButton::clicked, this, &ReportWidget::OnTextColor);
-
-	toolBar->addSeparator();
 
 	QPushButton* textBold = new QPushButton("Bold", toolBar);
 	toolBar->addWidget(textBold);
@@ -326,6 +304,24 @@ QToolBar* ReportWidget::createToolbar()
 	QPushButton* btnSplitCell = new QPushButton("Split", toolBar);
 	toolBar->addWidget(btnSplitCell);
 	connect(btnSplitCell, &QPushButton::clicked, this, &ReportWidget::OnSplitCell);
+
+	QPushButton* m_btnCellProperty = new QPushButton("Cell", toolBar);
+	toolBar->addWidget(m_btnCellProperty);
+	connect(m_btnCellProperty, &QPushButton::clicked, this, &ReportWidget::OnOpenCellProperty);
+
+	toolBar->addSeparator();
+
+	QPushButton* fileImport = new QPushButton("Import", toolBar);
+	toolBar->addWidget(fileImport);
+	connect(fileImport, &QPushButton::clicked, this, &ReportWidget::OnFileImport);
+
+	QPushButton* fileExport = new QPushButton("Export", toolBar);
+	toolBar->addWidget(fileExport);
+	connect(fileExport, &QPushButton::clicked, this, &ReportWidget::OnFileExport);
+
+	QPushButton* printPreview = new QPushButton("Preview", toolBar);
+	toolBar->addWidget(printPreview);
+	connect(printPreview, &QPushButton::clicked, this, &ReportWidget::OnPrintPreview);
 
 	return toolBar;
 }

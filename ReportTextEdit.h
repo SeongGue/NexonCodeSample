@@ -77,12 +77,8 @@ public:
 	bool newFormat(bool wantClear = true);
 	bool fileSave();
 	bool fileSaveAs();
-	void fileImport();
-	bool fileExport();
 	bool deleteFormat();
 	bool openReportFormatDir(const QString& path, QFileInfoList& fileList);
-
-	void printPreview();
 
 	void textBold();
 	void textUnderline();
@@ -100,7 +96,11 @@ public:
 	void mergeCell();
 	void splitCell();
 
-//	void openCellProperty();
+	void fileImport();
+	bool fileExport();
+	void printPreview();
+
+	void openCellProperty();
 	bool loadFromDirName(const QString& dirName);
 
 	QString getFileName() { return m_fileName; }
@@ -116,24 +116,22 @@ private:
 	bool load(const QString &fileName);
 	void setCurrentFileName(const QString &fileName);
 	void mergeFormatOnWordOrSelection(const QTextCharFormat &format);
+	
 	void dropImage(const QUrl& url, const QImage& image);
 
 	void drawPageBoundaryLine(QPainter& painter);
 
 	bool isImageFormat(const QPoint& mousePos, int& cursorPos);
-
-	void setSeletedIamgeFormat(int imgCursorPos);
-
 	bool findImageFormat(QTextBlock& block, QTextImageFormat& imgFmt, int& fragmentPos, int& fragmentLen);
-
-	void resizingImgFormat(const QPoint& pos, ImageResizingPointer pointer);
+	void setSeletedIamgeFormat(int imgCursorPos);
+	void resizingImageFormat(const QPoint& pos, ImageResizingPointer pointer);
 	void updateResizingPointer(const QSize& newSize);
 
-	void imageResourcePath(const QString& htmlString, std::vector<QString>& path_list);
 	bool copyImageToReportDirectory(QString& htmlString, const std::vector<QString>& path_list);
+	void imageResourcePath(const QString& htmlString, std::vector<QString>& path_list);
 	void resourceCopyToReportDirectory();
-	bool checkSpecialCharacters(const QString& str);
 
+	bool checkSpecialCharacters(const QString& str);
 	void setTextCursorPosition(int cursorPos);
 	void selectFragment(int fragmentPos, int fragmentLen);
 	

@@ -27,7 +27,6 @@ public:
 public slots:
 	void OnNewFile();
 	void OnFileSave();
-	void OnFileSaveAs();
 	void OnDeleteFile();
 
 	void OnFileImport();
@@ -48,6 +47,7 @@ public slots:
 	void OnInsertTable();
 	void OnMergeCell();
 	void OnSplitCell();
+	void OnOpenCellProperty();
 
 	void OnReportFormatChange(const QString& dirName);
 

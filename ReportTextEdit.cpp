@@ -133,7 +133,7 @@ void SelectedImageFormat::releaseSelection()
 
 //======================================================================================
 
-const QSize ReportTextEdit::IMPORTED_IMAGE_SIZE = QSize(200, 200);
+const QSize ReportTextEdit::IMPORTED_IMAGE_SIZE = QSize(500, 500);
 
 ReportTextEdit::ReportTextEdit(QWidget* parent)
 	: QTextEdit(parent), m_bLeftClick(false), m_clickedPos(), m_fileName(), m_selectedImgFmt()
@@ -278,7 +278,7 @@ void ReportTextEdit::mouseMoveEvent(QMouseEvent * ev)
 
 	if (true == m_selectedImgFmt.resizingFlag())
 	{
-		resizingImgFormat(ev->pos(), pointer);
+		resizingImageFormat(ev->pos(), pointer);
 		update();
 		return;
 	}
@@ -420,53 +420,6 @@ bool ReportTextEdit::deleteFormat()
 	return false;
 }
 
-void ReportTextEdit::fileImport()
-{
-	QFileDialog fileDialog(this, tr("Import File..."));
-	fileDialog.setAcceptMode(QFileDialog::AcceptOpen);
-	fileDialog.setFileMode(QFileDialog::ExistingFile);
-	fileDialog.setMimeTypeFilters(QStringList() << "text/html");
-	if (fileDialog.exec() != QDialog::Accepted)
-		return;
-	const QString fileName = fileDialog.selectedFiles().first();
-	if (!load(fileName))
-		QMessageBox::warning(nullptr, "Report Tab", tr("Could not open \"%1\"").arg(QDir::toNativeSeparators(fileName)));
-}
-
-bool ReportTextEdit::fileExport()
-{
-	const QFileDialog::Options options = QFlag(QFileDialog::ShowDirsOnly);
-	QString selectedFilter;
-	QString fileName = QFileDialog::getSaveFileName(this,
-		"Export file", QDir::homePath(), tr("PDF (*.pdf);;HTML (*.html)"),
-		&selectedFilter, options);
-
-	QString type = QFileInfo(fileName).suffix();
-
-	if ("html" == type)
-	{
-		QTextDocumentWriter writer(fileName);
-		writer.write(document());
-	}
-	else if ("pdf" == type)
-	{
-		QPrinterInfo info = QPrinterInfo::defaultPrinter();
-		if (info.state() == QPrinter::Error)
-		{
-			QMessageBox::warning(nullptr, "Failed", "Can not save to PDF.");
-		}
-		QPrinter printer(info, QPrinter::HighResolution);
-		printer.setOutputFormat(QPrinter::PdfFormat);
-		printer.setPaperSize(QPrinter::A4);
-		printer.setOutputFileName(fileName);
-		printer.setPageMargins(QMarginsF(15, 15, 15, 15));
-
-		document()->print(&printer);
-	}
-
-	return true;
-}
-
 bool ReportTextEdit::openReportFormatDir(const QString& path, QFileInfoList& fileList)
 {
 	QDir reportDir(path);
@@ -489,19 +442,6 @@ bool ReportTextEdit::openReportFormatDir(const QString& path, QFileInfoList& fil
 	if (fileList.size() <= 0) return false;
 
 	return loadFromDirName(fileList[0].fileName());
-}
-
-void ReportTextEdit::printPreview()
-{
-	QPrinterInfo info = QPrinterInfo::defaultPrinter();
-	if (info.state() == QPrinter::Error)
-	{
-		QMessageBox::warning(nullptr, "Failed", "Can not print.");
-	}
-	QPrinter printer(info, QPrinter::HighResolution);
-	QPrintPreviewDialog preview(&printer, this);
-	connect(&preview, &QPrintPreviewDialog::paintRequested, this, &ReportTextEdit::OnPrintPreview);
-	preview.exec();
 }
 
 void ReportTextEdit::textBold()
@@ -628,100 +568,124 @@ void ReportTextEdit::splitCell()
 	QTextTableCell cell = table->cellAt(textCursor());
 
 	int selectedRow = cell.row();
-	int selectedCol = cell.column();
+	int selectedColumn = cell.column();
 
-	if (selectedRow < 0 || selectedCol < 0)
+	if (selectedRow < 0 || selectedColumn < 0)
 		return;
 
-	TableCellSplitDialog dlg(this, Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
-	if (dlg.exec() == QDialog::Accepted)
+	int spanRow = cell.rowSpan();
+	int spanColumn = cell.columnSpan();
+
+	if (spanRow <= 1 && spanColumn <= 1)
 	{
-		textCursor().beginEditBlock();
-		{
-			QTextTableCell cell = table->cellAt(textCursor());
-
-			int selectedRow = cell.row();
-			int selectedCol = cell.column();
-
-			std::pair<int, int> splitNum = dlg.getSplitNumber();
-
-			int splitCol = splitNum.first;
-			int splitRow = splitNum.second;
-
-			table->insertColumns(selectedCol + 1, splitCol - 1);
-			table->insertRows(selectedRow + 1, splitRow - 1);
-
-			int maxRow = table->rows();
-			int maxCol = table->columns();
-
-			//행 병합
-			for (int c = 0; c < selectedCol; ++c)
-			{
-				table->mergeCells(selectedRow, c, splitRow, 1);
-			}
-
-			for (int c = selectedCol + splitCol; c < maxCol; ++c)
-			{
-				table->mergeCells(selectedRow, c, splitRow, 1);
-			}
-
-			//열 병합
-			for (int r = 0; r < selectedRow; ++r)
-			{
-				table->mergeCells(r, selectedCol, 1, splitCol);
-			}
-
-			for (int r = selectedRow + splitRow; r < maxRow; ++r)
-			{
-				table->mergeCells(r, selectedCol, 1, splitCol);
-			}
-		}
-		textCursor().endEditBlock();
+		QMessageBox::warning(nullptr, "Failed", "It is only possible to split cells that span multiple rows or columns,\n"
+			"such as rows that have been merged using merge cells.");
 	}
+
+	spanRow = std::max(1, spanRow - 1);
+	spanColumn = std::max(1, spanColumn - 1);
+	table->splitCell(selectedRow, selectedColumn, spanRow, spanColumn);
 }
 
-//void ReportTextEdit::openCellProperty()
-//{
-//	int firstRow = 0, numRow = 0, firstCol = 0, numCol = 0;
-//	textCursor().selectedTableCells(&firstRow, &numRow, &firstCol, &numCol);
-//	
-//	if (firstRow < 0 && firstCol < 0)
-//	{
-//		QTextTable* table = textCursor().currentTable();
-//		if (table)
-//		{
-//			QTextTableCell cell = table->cellAt(textCursor());
-//			QColor cellColor = cell.format().background().color();
-//			
-//			TableCellDialog dlg(cellColor, this, Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
-//			if (dlg.exec() == QDialog::Accepted)
-//			{
-//				cell.setFormat(dlg.getTableCellFormat());
-//			}
-//		}
-//	}
-//	else
-//	{
-//		QTextTable* table = textCursor().currentTable();
-//
-//		if (nullptr == table) return;
-//
-//		TableCellDialog dlg(Qt::white, this, Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
-//
-//		if (dlg.exec() == QDialog::Accepted)
-//		{
-//			for (int r = firstRow; r < numRow; ++r)
-//			{
-//				for (int c = firstCol; c < numCol; ++c)
-//				{
-//					QTextTableCell cell = table->cellAt(r, c);
-//					cell.setFormat(dlg.getTableCellFormat());
-//				}
-//			}
-//		}
-//	}
-//}
-//
+void ReportTextEdit::fileImport()
+{
+	const QString fileName = QFileDialog::getOpenFileName(this,
+		tr("Open Image"), "/home/jana", tr("Image Files (*.png *.jpg *.bmp)"));
+
+	QImage image(fileName);
+	QSize size = image.size();
+	size.scale(IMPORTED_IMAGE_SIZE, Qt::AspectRatioMode::KeepAspectRatio);
+	dropImage(fileName, image);
+}
+
+bool ReportTextEdit::fileExport()
+{
+	const QFileDialog::Options options = QFlag(QFileDialog::ShowDirsOnly);
+	QString selectedFilter;
+	QString fileName = QFileDialog::getSaveFileName(this,
+		"Export file", QDir::homePath(), tr("PDF (*.pdf)"),
+		&selectedFilter, options);
+
+	QString type = QFileInfo(fileName).suffix();
+
+	if ("pdf" == type)
+	{
+		QPrinterInfo info = QPrinterInfo::defaultPrinter();
+		if (info.state() == QPrinter::Error)
+		{
+			QMessageBox::warning(nullptr, "Failed", "Can not save to PDF.");
+		}
+		QPrinter printer(info, QPrinter::HighResolution);
+		printer.setOutputFormat(QPrinter::PdfFormat);
+		printer.setPaperSize(QPrinter::A4);
+		printer.setOutputFileName(fileName);
+		printer.setPageMargins(QMarginsF(15, 15, 15, 15));
+
+		document()->print(&printer);
+	}
+
+	return true;
+}
+
+void ReportTextEdit::printPreview()
+{
+	QPrinterInfo info = QPrinterInfo::defaultPrinter();
+	if (info.state() == QPrinter::Error)
+	{
+		QMessageBox::warning(nullptr, "Failed", "Can not print.");
+	}
+	QPrinter printer(info, QPrinter::HighResolution);
+	QPrintPreviewDialog preview(&printer, this);
+	connect(&preview, &QPrintPreviewDialog::paintRequested, this, &ReportTextEdit::OnPrintPreview);
+	preview.exec();
+}
+
+void ReportTextEdit::openCellProperty()
+{
+	int firstRow = 0, numRow = 0, firstCol = 0, numCol = 0;
+	textCursor().selectedTableCells(&firstRow, &numRow, &firstCol, &numCol);
+
+	if (firstRow < 0 && firstCol < 0)
+	{
+		QTextTable* table = textCursor().currentTable();
+		if (table)
+		{
+			QTextTableCell cell = table->cellAt(textCursor());
+			QColor cellColor = cell.format().background().color();
+
+			TableCellDialog dlg(cellColor, this, Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+			if (dlg.exec() == QDialog::Accepted)
+			{
+				cell.setFormat(dlg.getTableCellFormat());
+			}
+		}
+	}
+	else
+	{
+		QTextTable* table = textCursor().currentTable();
+
+		if (nullptr == table) return;
+
+		TableCellDialog dlg(Qt::white, this, Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+
+		if (dlg.exec() == QDialog::Accepted)
+		{
+			textCursor().beginEditBlock();
+			for (int r = firstRow; r < firstRow + numRow; ++r)
+			{
+				for (int c = firstCol; c < firstCol + numCol; ++c)
+				{
+					QTextTableCell cell = table->cellAt(r, c);
+					cell.setFormat(dlg.getTableCellFormat());
+					QTextCharFormat fmt;
+					fmt.setBackground(cell.format().background());
+					mergeFormatOnWordOrSelection(fmt);
+				}
+			}
+			textCursor().endEditBlock();
+		}
+	}
+}
 bool ReportTextEdit::loadFromDirName(const QString& dirName)
 {
 	QDir dir(STRING_MANAGER->report_format_dir_path + "/" + dirName);
@@ -859,24 +823,6 @@ bool ReportTextEdit::isImageFormat(const QPoint& mousePos, int& cursorPos)
 	return true;
 }
 
-void ReportTextEdit::setSeletedIamgeFormat(int imgCursorPos)
-{
-	QTextCursor cursor = textCursor();
-	cursor.setPosition(imgCursorPos);
-
-	int fragmentPos = 0;
-	int fragmentLen = 0;
-	QTextImageFormat imgfmt;
-	bool res = findImageFormat(cursor.block(), imgfmt, fragmentPos, fragmentLen);
-	if (false == res) return;
-
-	QRect rect = cursorRect(cursor);
-	QPoint imgPos(viewport()->mapToParent(rect.topLeft()));
-	QSize imgSize(imgfmt.width(), imgfmt.height());
-
-	m_selectedImgFmt.setSelectedFormat(QRect(imgPos, imgSize), imgfmt.name(), fragmentPos, fragmentLen);
-}
-
 bool ReportTextEdit::findImageFormat(QTextBlock& block, QTextImageFormat& imgFmt, int& fragmentPos, int& fragmentLen)
 {
 	QTextBlock::iterator it;
@@ -899,7 +845,25 @@ bool ReportTextEdit::findImageFormat(QTextBlock& block, QTextImageFormat& imgFmt
 	return false;
 }
 
-void ReportTextEdit::resizingImgFormat(const QPoint& pos, ImageResizingPointer pointer)
+void ReportTextEdit::setSeletedIamgeFormat(int imgCursorPos)
+{
+	QTextCursor cursor = textCursor();
+	cursor.setPosition(imgCursorPos);
+
+	int fragmentPos = 0;
+	int fragmentLen = 0;
+	QTextImageFormat imgfmt;
+	bool res = findImageFormat(cursor.block(), imgfmt, fragmentPos, fragmentLen);
+	if (false == res) return;
+
+	QRect rect = cursorRect(cursor);
+	QPoint imgPos(viewport()->mapToParent(rect.topLeft()));
+	QSize imgSize(imgfmt.width(), imgfmt.height());
+
+	m_selectedImgFmt.setSelectedFormat(QRect(imgPos, imgSize), imgfmt.name(), fragmentPos, fragmentLen);
+}
+
+void ReportTextEdit::resizingImageFormat(const QPoint& pos, ImageResizingPointer pointer)
 {
 	if (false == m_selectedImgFmt.resizingFlag()) return;
 
@@ -964,6 +928,22 @@ void ReportTextEdit::updateResizingPointer(const QSize& newSize)
 	m_selectedImgFmt.updateResizingPointer();
 }
 
+bool ReportTextEdit::copyImageToReportDirectory(QString& htmlString, const std::vector<QString>& path_list)
+{
+	for (int i = 0; i < path_list.size(); ++i)
+	{
+		QFileInfo fi(path_list.at(i));
+		QString newPath = STRING_MANAGER->report_format_dir_path + "/" + QFileInfo(m_fileName).baseName() + "/" + fi.fileName();
+
+		QImage img(path_list[i]);
+		QFile::remove(newPath);
+		img.save(newPath);
+		htmlString.replace(path_list.at(i), newPath);
+	}
+	setHtml(htmlString);
+	return true;
+}
+
 void ReportTextEdit::imageResourcePath(const QString& htmlString, std::vector<QString>& path_list)
 {
 	QString imgPathKey = "<img src=\"file:///";
@@ -988,22 +968,6 @@ void ReportTextEdit::imageResourcePath(const QString& htmlString, std::vector<QS
 			path_list.push_back(path);
 		}
 	}
-}
-
-bool ReportTextEdit::copyImageToReportDirectory(QString& htmlString, const std::vector<QString>& path_list)
-{
-	for (int i = 0; i < path_list.size(); ++i)
-	{
-		QFileInfo fi(path_list.at(i));
-		QString newPath = STRING_MANAGER->report_format_dir_path + "/" + QFileInfo(m_fileName).baseName() + "/" + fi.fileName();
-
-		QImage img(path_list[i]);
-		QFile::remove(newPath);
-		img.save(newPath);
-		htmlString.replace(path_list.at(i), newPath);
-	}
-	setHtml(htmlString);
-	return true;
 }
 
 void ReportTextEdit::resourceCopyToReportDirectory()

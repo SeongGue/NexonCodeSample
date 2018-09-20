@@ -35,10 +35,11 @@ public slots:
 
 private:
 	QTextTableFormat m_tableFormat;
+	QString m_defaultTable;
+	
 	QSpinBox* m_rowSpin;
 	QSpinBox* m_colSpin;
 	QPushButton* m_borderColorBtn;
-	QString m_defaultTable;
 
 	static const int nPadding = 5;
 	const QColor nBorderColor = Qt::black;
@@ -69,4 +70,34 @@ public slots:
 private:
 	QSpinBox* m_columEditBox;
 	QSpinBox* m_rowEditBox;
+};
+
+class TableCellDialog : public QDialog
+{
+	Q_OBJECT
+
+private:
+	TableCellDialog(const TableCellDialog& copy) {}
+	const TableCellDialog& operator=(const TableCellDialog& rhs) {}
+
+public:
+	explicit TableCellDialog(const QColor& cellColor, QWidget* parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
+	~TableCellDialog();
+
+	const QTextTableCellFormat& getTableCellFormat();
+
+	public slots:
+	void OnFinished();
+	void OnCancel();
+	void OnColorChange();
+
+private:
+	QTextTableCellFormat m_tableCellFormat;
+	
+	QSpinBox* m_leftSpinBox;
+	QSpinBox* m_rightSpinBox;
+	QSpinBox* m_topSpinBox;
+	QSpinBox* m_bottomSpinBox;
+
+	QPushButton* m_colorBtn;
 };

@@ -15,6 +15,7 @@ public:
 	QString groupBox;
 	QString pushButton;
 	QString editBox;
+	QString spinBox;
 
 	QString reportToolbar;
 	QString reportEditingPlace;
